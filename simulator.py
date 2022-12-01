@@ -1,8 +1,9 @@
 import argparse
 import numpy as np
 import pandas as pd
+import math
 
-from caches_simulation.caches import Caches
+from caches_simulation.caches import DirectMap
 
 parser = argparse.ArgumentParser(description='Caches simulation')
 parser.add_argument('--block_size', type=int, default=1, help="size offset or word id in words")
@@ -13,7 +14,7 @@ parser.add_argument('--hit_time', type=float, default=3, help='hit time for cach
 parser.add_argument('--miss_time', type=float, default=3, help="miss time for caches in ns")
 parser.add_argument('--LRU', type=bool, default=False, help="true to use LRU replacement else set Random replacement")
 parser.add_argument('--fileName', type=str, default="sample1.txt", help="file name contain series of byte addresses in text file")
-parser.add_argument('--dtype', type=str, default='bytes', help="type of input data")
+# parser.add_argument('--dtype', type=str, default='bytes', help="type of input data")
 arguments = parser.parse_args()
 print(arguments)
 
@@ -24,7 +25,7 @@ hit_time = arguments.hit_time
 miss_time = arguments.miss_time
 LRU = arguments.LRU
 fileName = arguments.fileName
-dtype = arguments.dtype
+#dtype = arguments.dtype
 
 #addrs = np.loadtxt(fileName,dtype=str)
 #addrs = [np.binary_repr(int(s, base=16),20) for s in addrs]
@@ -34,8 +35,13 @@ addrs = [np.binary_repr(s,addr_size) for s in addrs]
 addrs = np.array(addrs)
 print(addrs)
 
-cache_map = Caches(block_size, blocks, associativity, hit_time,miss_time,LRU,addrs, addr_size)
+offset = int(math.log2(block_size*4))
+setSize = int(blocks/associativity)
+indexID = int(math.log2(setSize))
+tag = addr_size - indexID - offset
 
-print(cache_map.DM)
+cache_map = DirectMap(offset,indexID,tag,LRU,addrs)
+
+print(cache_map.DirectMap())
 print(cache_map.hit)
 print(cache_map.miss)
