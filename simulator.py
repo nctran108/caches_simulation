@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import math
 
-from caches_simulation.caches import DirectMap
+from caches_simulation.caches import DirectMap, NSetAssociate
 
 parser = argparse.ArgumentParser(description='Caches simulation')
 parser.add_argument('--block_size', type=int, default=1, help="size offset or word id in words")
@@ -33,7 +33,7 @@ fileName = arguments.fileName
 #addrs = [np.binary_repr(s,addr_size) for s in addrs]
 # print(addrs)
 
-addr_size = 20
+addr_size = 8
 addrs = np.loadtxt(fileName,dtype=str)
 addrs = [np.binary_repr(int(s, base=16),addr_size) for s in addrs]
 #print(addrs)
@@ -43,8 +43,8 @@ setSize = int(blocks/associativity)
 indexID = int(math.log2(setSize))
 tag = addr_size - indexID - offset
 
-cache_map = DirectMap(offset,indexID,tag,LRU,addrs)
+cache_map = NSetAssociate(offset,indexID,tag,associativity,LRU,addrs)
 
-print(cache_map.DirectMap())
+print(cache_map.NSA())
 print(cache_map.hit)
 print(cache_map.miss)

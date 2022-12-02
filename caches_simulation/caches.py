@@ -23,13 +23,18 @@ class Caches:
     def miss_rate(self, miss, total):
         return miss / total
     
-    def generate_index(self, index_size):
+    def generate_index(self, index_size, associativity = 1):
         index = []
         if index_size == 0:
-            return pd.DataFrame()
-        for i in range(int(math.pow(2,index_size))):
-            index.append(bin(i)[2:].zfill(int(index_size)))
-        return pd.DataFrame({'index': index})
+                return pd.DataFrame()
+        if associativity == 1:
+            for i in range(int(math.pow(2,index_size))):
+                index.append(bin(i)[2:].zfill(int(index_size)))
+        else:
+            setID = [bin(i)[2:].zfill(int(index_size)) for i in range(int(math.pow(2,index_size)))]
+            id = [i for i in range(associativity)]
+            index = [setID, id]
+        return index
 
     def block_columns(self):
         columns = []
@@ -55,8 +60,8 @@ class DirectMap(Caches):
         self.LRU = LRU
         self.addrs = pd.DataFrame(addrs,columns=["data_address"])
     
-    def DirectMap(self):
-        index = self.generate_index(self.I)
+    def DM(self):
+        index = pd.DataFrame({'index': self.generate_index(self.I)})
         df = pd.DataFrame(columns=["index","valid","Tag"])
         df["index"] = index
         df = df.set_index("index")
@@ -82,3 +87,46 @@ class DirectMap(Caches):
                 else:
                     self.hit += 1
         return df
+
+class NSetAssociate(Caches):
+    def __init__(self,offsets,index,tag,associate,LRU,addrs):
+        super(Caches, self).__init__()
+        self.O = offsets
+        self.I = index
+        self.T = tag
+        self.associate = associate
+        self.LRU = LRU
+        self.addrs = pd.DataFrame(addrs,columns=["data_address"])
+        self.hit = 0
+        self.miss = 0
+    
+    def NSA(self):
+        iterator = self.generate_index(self.I,self.associate)
+        setID = pd.MultiIndex.from_product(iterator, names=["set","index"])
+        df = pd.DataFrame(columns=["valid","Tag"], index=setID)
+        df["valid"] = 0
+        df = pd.concat((df,self.block_columns()), axis=1)
+        
+        for data in self.addrs["data_address"]:
+            set = data[self.T:self.I+self.T]
+            tag = data[:self.T]
+            for i in range(self.associate):
+                valid = df.loc[(set,i)]['valid']
+                
+                if df.loc[(set,slice(None)),"valid"].all():
+                    # random replace
+                    print(tag in df.loc[(set,slice(None)),"Tag"].unique())
+                    break
+                else:
+                    if valid == 0:
+                        print(i)
+                        self.miss += 1
+                        df.at[(set,i),"valid"] = 1
+                        df.at[(set,i),"Tag"] = tag
+                        df = self.store_data((set,i),data,df)
+                        break
+                    
+            
+
+        return df
+        
