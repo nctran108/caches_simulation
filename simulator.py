@@ -27,15 +27,18 @@ LRU = arguments.LRU
 fileName = arguments.fileName
 #dtype = arguments.dtype
 
-#addrs = np.loadtxt(fileName,dtype=str)
-#addrs = [np.binary_repr(int(s, base=16),20) for s in addrs]
-addr_size = 8
-addrs = np.loadtxt(fileName,dtype=int)
-addrs = [np.binary_repr(s,addr_size) for s in addrs]
-addrs = np.array(addrs)
-print(addrs)
 
-offset = int(math.log2(block_size*4))
+#addr_size = 8
+#addrs = np.loadtxt(fileName,dtype=int)
+#addrs = [np.binary_repr(s,addr_size) for s in addrs]
+# print(addrs)
+
+addr_size = 20
+addrs = np.loadtxt(fileName,dtype=str)
+addrs = [np.binary_repr(int(s, base=16),addr_size) for s in addrs]
+#print(addrs)
+
+offset = int(math.log2(block_size))
 setSize = int(blocks/associativity)
 indexID = int(math.log2(setSize))
 tag = addr_size - indexID - offset
