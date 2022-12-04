@@ -1,132 +1,92 @@
-import numpy as np
 import pandas as pd
 import math
 
-class Caches:
-    def __init__(self,offsets,setSize,index,tag,hit_time,miss_time,LRU,addrs) -> None:
+class Caches(object):
+    """
+    this class contain all function that need to generate and calculate caches
+
+    Parameters
+    ----------
+    offsets : int
+    index : int
+    tag : int
+    LRU : bool
+    addrs : ndarray, Iterable, list or Series
+    """
+    def __init__(self,offsets : int,index: int, tag : int,LRU: bool, addrs : None) -> None:
         self.O = offsets
         self.I = index
-        self.setSize = setSize
         self.T = tag
-        self.hit_time = hit_time
-        self.miss_time = miss_time
         self.LRU = LRU
         self.addrs = pd.DataFrame(addrs,columns=["data_address"])
-        
-    def __str__(self) -> str:
 
-        return "caches"
+    def hit_rate(self,hit: int,total: int) -> float:
+        """
+        this function calculate hit rate by divide hit over total
+        """
+        return round(float(hit) / total,4)
 
-    def hit_rate(self,hit,total):
-        return hit / total
-
-    def miss_rate(self, miss, total):
-        return miss / total
+    def miss_rate(self, miss, total) -> float:
+        """
+        this function calculate miss rate by divide miss over total
+        """
+        return round(float(miss) / total,4)
     
-    def generate_index(self, index_size, associativity = 1):
+    def generate_index(self, index_size : int, associativity: int = 1) -> list:
+        """
+        this function create a list of binary for number of lines for DirectMap, or generate set and index of each set
+        for full set associate, no need to generate index
+        """
+        # create empty list
         index = []
+        
+        # check if index_size equal 0 then return empty dataframe
         if index_size == 0:
                 return pd.DataFrame()
+        
+        # associativity equal 1 is DirectMap
         if associativity == 1:
+            # create a list of binary base on index size
             for i in range(int(math.pow(2,index_size))):
                 index.append(bin(i)[2:].zfill(int(index_size)))
-        else:
+        # if associativity greater than 1 then it is Set associate
+        elif associativity > 1:
+            # create a list of binary for set
             setID = [bin(i)[2:].zfill(int(index_size)) for i in range(int(math.pow(2,index_size)))]
+            # create list index for each set
             id = [i for i in range(associativity)]
+            # store both list into index list
             index = [setID, id]
         return index
 
-    def block_columns(self):
+    def block_columns(self) -> pd.DataFrame:
+        """
+        this function create datafram that contain all block data 
+        """
         columns = []
+        # generate binary of the offsets and convert it in this format data[bin]
+        # then append each string to the list
         for i in range(int(math.pow(2,self.O))):
             columns.append("data[" + str(bin(i)[2:].zfill(self.O)) + "]")
+        # create dataframe base of the list create above and return it
         return pd.DataFrame(columns=columns)
 
-    def store_data(self, id, data, df):
+    def store_data(self, id : int, data : str, df : pd.DataFrame) -> pd.DataFrame:
+        """
+        this function create hex data to store into data blocks
+        """
+        # generate loop to get each column name in dataframe
         for i in range(int(math.pow(2,self.O))):
+            # create column name with this format data[bin] base on number of offsets
             column = "data[" + str(bin(i)[2:].zfill(self.O)) + "]"
-            data_addr = data[:self.T+self.I] + bin(i)[2:].zfill(self.O)
+            # only have one block data if offset equal 0
+            if self.O == 0:
+                # since offset equal 0 then the data need to store equal original data
+                data_addr = data
+            else:
+                # if offset greater than 0 then store data will equal data[tag+index] + offset
+                # for example if offset = 1 then has two data that need to store which are data[tag+index] + "0" and data[tag+index] + "1"
+                data_addr = data[:self.T+self.I] + bin(i)[2:].zfill(self.O)
+            # store all data address into each data column
             df.at[id,column] = hex(int(data_addr,2))
         return df
-    
-class DirectMap(Caches):
-    def __init__(self,offsets,index,tag,LRU,addrs):
-        super(Caches, self).__init__()
-        self.O = offsets
-        self.I = index
-        self.T = tag
-        self.hit = 0
-        self.miss = 0
-        self.LRU = LRU
-        self.addrs = pd.DataFrame(addrs,columns=["data_address"])
-    
-    def DM(self):
-        index = pd.DataFrame({'index': self.generate_index(self.I)})
-        df = pd.DataFrame(columns=["index","valid","Tag"])
-        df["index"] = index
-        df = df.set_index("index")
-        df["valid"] = 0
-
-        df = pd.concat((df,self.block_columns()), axis=1)
-
-        for data in self.addrs["data_address"]:
-            id = data[self.T:self.I+self.T]
-            tag = data[:self.T]
-            valid = df.at[id,"valid"]
-
-            if valid == 0:
-                self.miss += 1
-                df.at[id,"valid"] = 1
-                df.at[id,"Tag"] = tag
-                df = self.store_data(id,data,df)
-            else:
-                if tag != df._get_value(id,"Tag"):
-                    self.miss += 1
-                    df.at[id,"Tag"] = tag
-                    df = self.store_data(id,data,df)
-                else:
-                    self.hit += 1
-        return df
-
-class NSetAssociate(Caches):
-    def __init__(self,offsets,index,tag,associate,LRU,addrs):
-        super(Caches, self).__init__()
-        self.O = offsets
-        self.I = index
-        self.T = tag
-        self.associate = associate
-        self.LRU = LRU
-        self.addrs = pd.DataFrame(addrs,columns=["data_address"])
-        self.hit = 0
-        self.miss = 0
-    
-    def NSA(self):
-        iterator = self.generate_index(self.I,self.associate)
-        setID = pd.MultiIndex.from_product(iterator, names=["set","index"])
-        df = pd.DataFrame(columns=["valid","Tag"], index=setID)
-        df["valid"] = 0
-        df = pd.concat((df,self.block_columns()), axis=1)
-        
-        for data in self.addrs["data_address"]:
-            set = data[self.T:self.I+self.T]
-            tag = data[:self.T]
-            for i in range(self.associate):
-                valid = df.loc[(set,i)]['valid']
-                
-                if df.loc[(set,slice(None)),"valid"].all():
-                    # random replace
-                    print(tag in df.loc[(set,slice(None)),"Tag"].unique())
-                    break
-                else:
-                    if valid == 0:
-                        print(i)
-                        self.miss += 1
-                        df.at[(set,i),"valid"] = 1
-                        df.at[(set,i),"Tag"] = tag
-                        df = self.store_data((set,i),data,df)
-                        break
-                    
-            
-
-        return df
-        
