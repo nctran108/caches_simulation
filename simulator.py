@@ -85,15 +85,13 @@ class Simulation(object):
 
 
 # get word addresses from sample1.txt
-def sample1(fileName: str = "sample1.txt") -> np.array:
-    size = 6
+def read_int(fileName: str = "sample1.txt",size : int=6) -> np.array:
     addrs = np.loadtxt(fileName,dtype=int)
     addrs = [np.binary_repr(s,size) for s in addrs]
     return addrs
 
 # get word addresses from addresses.txt
-def addresses(fileName: str = "addresses.txt") -> np.array:
-    size = 20
+def read_hex(fileName: str = "addresses.txt", size : int = 20) -> np.array:
     addrs = np.loadtxt(fileName,dtype=str)
     addrs = [np.binary_repr(int(s, base=16),size) for s in addrs]
     return addrs

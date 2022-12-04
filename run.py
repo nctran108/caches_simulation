@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import math
 
-from simulator import Simulation, sample1, addresses
+from simulator import Simulation, read_int, read_hex
 
 parser = argparse.ArgumentParser(description='Caches simulation')
 parser.add_argument('--block_size', type=int, default=1, help="size offset or word id in words")
@@ -27,7 +27,8 @@ def main():
     fileName = arguments.fileName
 
     size = 6
-    addr1 = sample1()
+    addr1 = read_int(fileName,size)
+    print(addr1)
     sample1_simulation = Simulation(block_size,blocks,associativity,LRU,addr1,size)
     sample1_simulation.DMTable()
     sample1_simulation.DMResult()

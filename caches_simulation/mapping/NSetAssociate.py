@@ -56,6 +56,8 @@ class NSetAssociate(Caches):
         """
         this function generate Set Associate to calculate hits and misses
         """
+        # create empty list of LRU Order
+        LRUOrder = []
         # check if associativity less than number of lines then it is N set Associate
         if self.associativity < math.pow(2,self.I)*self.associativity:
             # generate iterator with [list of set, list of index]
@@ -63,15 +65,17 @@ class NSetAssociate(Caches):
             # use iterator to create multi index for dataframe
             setID = pd.MultiIndex.from_product(iterator, names=["set","index"])
             # generate dataframe woth three columns and two indexs
-            df = pd.DataFrame(columns=["valid","Tag","count"], index=setID)
+            df = pd.DataFrame(columns=["valid","Tag"], index=setID)
+            # create lists of LRU Order to control the flow base on number of set
+            for i in range(int(math.pow(2,self.I))):
+                LRUOrder.append([])
         # if associativity equal number of lines then it is Full Set Associate
         else:
             # just create data frame of tree columns
-            df = pd.DataFrame(columns=["valid","Tag","count"], index=range(int(math.pow(2,self.I)*self.associate)))
+            df = pd.DataFrame(columns=["valid","Tag"], index=range(int(math.pow(2,self.I)*self.associativity)))
         # set all valid values equal 0
         df["valid"] = 0
-        # set all count values equal 0
-        df["count"] = 0
+        
         # joint data blocks with dataframe above into one dataframe
         df = pd.concat((df,self.block_columns()), axis=1)
 
@@ -81,30 +85,47 @@ class NSetAssociate(Caches):
             set = data[self.T:self.I+self.T]
             # get tag value from data address
             tag = data[:self.T]
+            
             # check if associativity less than number of lines then it is N set Associate
             #---------------- N Set Associate ---------------------#
             if self.associativity < math.pow(2,self.I)*self.associativity:
+                # get subset dataframe of set ID
+                workingBlock = df.loc[set]
                 # get all tag values in the set and store them in a list
-                tag_list = list(df.loc[(set,slice(None)),"Tag"].unique())
+                tag_list = workingBlock["Tag"].unique()
                 # if all valid value in the set equal one then the cache either hit or need to replace if miss
-                if df.loc[(set,slice(None)),"valid"].all():
+                if workingBlock["valid"].all():
                     # if data tag is in the list then it is a hit
                     if tag in tag_list:
                         # update hit
                         self.hit += 1
-                        # increate count value since it hits
-                        df.at[(set,tag_list.index(tag)),"count"] += 1
+                        # move the data to the top of the list by remove and insert data
+                        if data in LRUOrder[int(set,2)]:
+                            LRUOrder[int(set,2)].remove(data)
+                        LRUOrder[int(set,2)].insert(0,data)
                     # do not found tag which is a miss
                     else:
                         # update miss
                         self.miss += 1
+                        # get subset of working block which only have data memory columns
+                        dataBlocks = workingBlock[:2].drop(columns=["valid","Tag"])
                         # if LRU is true then use LRU replacement method
                         # which replace the least recently use or lowest count value in the set
                         if self.LRU:
-                            # find the index in the set that has lowest count value
-                            minCount = df["count"].groupby(level=[0]).idxmin()
-                            # store that index to i
-                            i = minCount.loc[set][1]
+                            # get the last index of the LRU Order list
+                            replace = hex(int(LRUOrder[int(set,2)][-1],2))
+                            i = 0
+                            # check to get the index that contain the data need to replace
+                            for columnName in dataBlocks.columns:
+                                temp = dataBlocks.loc[dataBlocks[columnName] == replace].index.values
+                                # the index is in the list that is not empty
+                                if len(temp) != 0:
+                                    i = temp[0]
+                                    break
+                            # remove all data in row i that exist in LRU Order list
+                            for mem in dataBlocks.loc[i].values:
+                                if bin(int(mem,16))[2:].zfill(len(data)) in LRUOrder[int(set,2)]:
+                                    LRUOrder[int(set,2)].remove(bin(int(mem,16))[2:].zfill(len(data)))
                         # use Random replacement when LRU is False
                         else:
                             # choice randomly an integer in index range and set i equal it
@@ -113,8 +134,8 @@ class NSetAssociate(Caches):
                         df.at[(set,i),"Tag"] = tag
                         # replace memory data into cache data blocks in row (set,i)
                         df = self.store_data((set,i),data,df)
-                        # reset count to 0 in row (set,i)
-                        df.at[(set,i),"count"] = 0
+                        # insert the recent data to the front of the list
+                        LRUOrder[int(set,2)].insert(0,data)
                 # if not all valid values equal 1 then still have empty row to add
                 else:
                     # check if data tag is in cache tags
@@ -122,16 +143,18 @@ class NSetAssociate(Caches):
                     if tag in tag_list:
                         # update hit
                         self.hit += 1
-                        # increase count by 1
-                        df.at[(set,tag_list.index(tag)),"count"] += 1
+                        # move the data to the top of the list by remove and insert data
+                        if data in LRUOrder[int(set,2)]:
+                            LRUOrder[int(set,2)].remove(data)
+                        LRUOrder[int(set,2)].insert(0,data)
                     # if the tag is not exist then it is a miss and need to add in
                     else:
                         # check every index of the set
                         # if the valid value of the index equal zero then add date memory to the index
                         # then break the loop
-                        for i in range(self.associativity):
+                        for i in workingBlock.index:
                             # check if the valid value equal 0
-                            if df.loc[(set,i)]['valid'] == 0:
+                            if workingBlock.iloc[i]['valid'] == 0:
                                 # update miss
                                 self.miss += 1
                                 # update valid to 1
@@ -140,6 +163,8 @@ class NSetAssociate(Caches):
                                 df.at[(set,i),"Tag"] = tag
                                 # store data memories to chaches data blocks
                                 df = self.store_data((set,i),data,df)
+                                # insert the data into first index of the list
+                                LRUOrder[int(set,2)].insert(0,data)
                                 break
             # if associativity equal number of lines then it is Full Set Associate
             # ----------------------Full Set Associate-------------------------- # 
@@ -150,16 +175,33 @@ class NSetAssociate(Caches):
                     if tag in df["Tag"].unique():
                         # update hit
                         self.hit += 1
-                        # count up by 1 for the tag
-                        df.at[list(df["Tag"].unique()).index(tag),"count"] += 1
+                        # move the data to the top of the list by remove and insert data
+                        if data in LRUOrder:
+                            LRUOrder.remove(data)
+                        LRUOrder.insert(0,data)
                     # if the tag is not exist in cache then it is a miss
                     else:
                         # update miss
                         self.miss += 1
+                        # get subset of working block which only have data memory columns
+                        dataBlocks = df[:2].drop(columns=["valid","Tag"])
                         # if LRU is True then use LRU replacement
                         if self.LRU:
-                            # get the index that has the lowest count
-                            i = df["count"].idxmin()
+                            # get the last index of the LRU Order list
+                            replace = hex(int(LRUOrder[-1],2))
+                            i = 0
+                             # check to get the index that contain the data need to replace
+                            for columnName in dataBlocks.columns:
+                                temp = dataBlocks.loc[dataBlocks[columnName] == replace].index.values
+                                # the index is in the list that is not empty
+                                if len(temp) != 0:
+                                    i = temp[0]
+                                    break
+                            # remove all data in row i that exist in LRU Order list
+                            for mem in dataBlocks.loc[i].values:
+                                if bin(int(mem,16))[2:].zfill(len(data)) in LRUOrder:
+                                    LRUOrder.remove(bin(int(mem,16))[2:].zfill(len(data)))
+
                         # else use Random replacement method
                         else:
                             # choice randomly an integer between index range
@@ -168,16 +210,18 @@ class NSetAssociate(Caches):
                         df.at[i,"Tag"] = tag
                         # replace data memories to data blocks index i
                         df = self.store_data(i,data,df)
-                        # reset count to 0
-                        df.at[i,"count"] = 0
+                        # insert replaced data into the front of the list
+                        LRUOrder.insert(0,data)
                 # if not all valid equal 1 then still has line to store
                 else:
                     # if data tag is exist in cache tag then it is a hit
                     if tag in df["Tag"].unique():
                         # update hit
                         self.hit += 1
-                        # increate count by 1 for the tag
-                        df.at[list(df["Tag"].unique()).index(tag),"count"] += 1
+                        # move the data to the top of the list by remove and insert data
+                        if data in LRUOrder:
+                            LRUOrder.remove(data)
+                        LRUOrder.insert(0,data)
                     # else it is a miss
                     else:
                         # update miss
@@ -193,6 +237,8 @@ class NSetAssociate(Caches):
                                 df.at[i,"Tag"] = tag
                                 # add data mem to cache data blocks
                                 df = self.store_data(i,data,df)
+                                # insert new data to the front of the list
+                                LRUOrder.insert(0,data)
                                 break
         return df
         
