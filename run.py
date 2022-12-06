@@ -26,24 +26,24 @@ def main():
     LRU = arguments.LRU
     fileName = arguments.fileName
 
-    size = 6
-    addr1 = read_int(fileName,size)
-    print(addr1)
-    sample1_simulation = Simulation(block_size,blocks,associativity,LRU,addr1,size)
+    #size = 6
+    #addr1 = read_int(fileName,size)
+    #print(addr1)
+    #sample1_simulation = Simulation(block_size,blocks,associativity,LRU,addr1,size)
     #sample1_simulation.DMTable()
     #sample1_simulation.DMResult()
 
-    sample1_simulation.NSATable(step=True)
+    #sample1_simulation.NSATable(step=True)
     #sample1_simulation.NASResult()
 
-    #size = 20
-    #addr2 = read_hex()
-    #simulation = Simulation(block_size,blocks,associativity,LRU,addr2,size)
+    size = 20
+    addr2 = read_hex()
+    simulation = Simulation(block_size,blocks,associativity,LRU,addr2,size)
     #simulation.DMTable()
     #simulation.DMResult()
 
     #simulation.NSATable(step=True)
-    #simulation.NASResult()
+    simulation.NASResult()
 
 if __name__ == "__main__":
     main()

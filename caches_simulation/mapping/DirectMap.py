@@ -39,7 +39,7 @@ class DirectMap(Caches):
         # calculate cache size = 2^I * 2^O
         cacheSize = str(int(math.pow(2,self.I) * math.pow(2,self.O)))
         # create dict with all result above and use the dict to create dataframe
-        df = pd.DataFrame.from_dict({"Cache size (Words)" : cacheSize,
+        df = pd.DataFrame.from_dict({"Cache size" : cacheSize,
                             "Reads" : total,
                             "Hits" : self.hit,
                             "Misses" : self.miss,
