@@ -52,12 +52,14 @@ class NSetAssociate(Caches):
         # return string of the datafram with no header
         return df.to_string(header=False)
 
-    def NSA(self):
+    def NSA(self,step: bool= False):
         """
         this function generate Set Associate to calculate hits and misses
         """
         # create empty list of LRU Order
         LRUOrder = []
+        # count for step counter
+        count = 0
         # check if associativity less than number of lines then it is N set Associate
         if self.associativity < math.pow(2,self.I)*self.associativity:
             # generate iterator with [list of set, list of index]
@@ -240,5 +242,12 @@ class NSetAssociate(Caches):
                                 # insert new data to the front of the list
                                 LRUOrder.insert(0,data)
                                 break
+            # use step for debugging or see result in every loop
+            if step:
+                s = "[Step " + str(count) + "]\n"
+                print(s)
+                print(df) 
+                input("click Enter to continous ...........")  
+                count += 1                 
         return df
         

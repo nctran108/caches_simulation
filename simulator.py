@@ -48,11 +48,11 @@ class Simulation(object):
         dm = DirectMap(offset,index,tag,self.LRU,self.addrs)
         return dm
 
-    def DMTable(self):
+    def DMTable(self,step: bool=False):
         """
         This function print out DirectMap table result
         """
-        print(self.DirectMap().DM())
+        print(self.DirectMap().DM(step))
 
     def DMResult(self):
         """
@@ -71,11 +71,11 @@ class Simulation(object):
         setAssociate = NSetAssociate(offset,index,tag,self.associativity,self.LRU,self.addrs)
         return setAssociate
 
-    def NSATable(self):
+    def NSATable(self,step: bool=False):
         """
         This function print out N Set Associate table result
         """
-        print(self.NSetAssociate().NSA())
+        print(self.NSetAssociate().NSA(step))
 
     def NASResult(self):
         """

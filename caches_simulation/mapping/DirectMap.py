@@ -48,10 +48,12 @@ class DirectMap(Caches):
         # return string of the datafram with no header
         return df.to_string(header=False)
     
-    def DM(self):
+    def DM(self,step: bool=False) -> pd.DataFrame:
         """
         this function generate DirectMap to calculate hits and misses
         """
+        # count for step counter
+        count = 0
         # call generate_index function from parent object to create list of binaries for the dataframe index
         index = pd.DataFrame({'index': self.generate_index(self.I)})
         # create dataframe with three columns
@@ -100,4 +102,11 @@ class DirectMap(Caches):
                 else:
                     # update hit
                     self.hit += 1
+            # use step for debugging or see result in every loop
+            if step:
+                s = "[Step " + str(count) + "]\n"
+                print(s)
+                print(df) 
+                input("click Enter to continous ...........")  
+                count += 1   
         return df
